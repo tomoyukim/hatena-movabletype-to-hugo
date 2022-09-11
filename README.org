@@ -1,0 +1,22 @@
+* Hatenablog MovableType to Hugo
+A tool to convert a MovableType text exported from Hatena-blog to Hugo page bundles (Leaf Bundles).
+
+** Features
+- Remove Hatena-keyword links
+- Download images on Hatena Photo-life or Blogspot into Leaf Bundles
+- Convert blog card links to Shortcode; ~{{% card "url" %}}title{{% /card %}}~
+- Convert Amazon affiliate links to Shortcode; ~{{< amazon asin="asin">}}title{{< /amazon >}}~
+- Convert HTML tags to Markdown syntax as much as possible in order to reflect styles in the Hugo theme
+
+** Usage
+This tool depends on [[https://github.com/google/zx][zx]]. Install ~zx~ before running this script.
+#+begin_src sh
+  npm i -g zx
+#+end_src
+
+Clone the repository and run.
+#+begin_src sh
+  git clone git@github.com:tomoyukim/hatena-movabletype-to-hugo
+  cd hatena-movabletype-to-hugo
+  ./htm2hugo.mjs ./path-to-exported-file
+#+end_src
