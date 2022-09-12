@@ -18,5 +18,5 @@ Clone the repository and run.
 #+begin_src sh
   git clone git@github.com:tomoyukim/hatena-movabletype-to-hugo
   cd hatena-movabletype-to-hugo
-  ./htm2hugo.mjs ./path-to-exported-file
+  ./hmt2hugo.mjs ./path-to-exported-file
 #+end_src

@@ -1,13 +1,13 @@
 #!/usr/bin/env zx
 
 const downloadImage = async (image_url, download_dir) => {
-  const filename = image_url.substring(image_url.lastIndexOf('/'));
+  const filename = image_url.substring(image_url.lastIndexOf('/') + 1);
   try {
     const response = await fetch(image_url);
     const savePath = `${download_dir}/${filename}`;
     response.body.pipe(fs.createWriteStream(savePath));
   } catch (error) {
-    console.error(error);
+    console.error(chalk.red(error));
   }
   return filename;
 };
@@ -227,9 +227,9 @@ if (argv['_'].length === 1) {
 	const target_dir = argv.o ? resolveTargetDir(argv.o, path) : path;
 	await $`mkdir -p ${target_dir}`;
 
-	if (front_matter.img) {
-	  const image_name = await downloadImage(front_matter.img, target_dir);
-	  front_matter.img = image_name;
+	if (front_matter.image) {
+	  const image_name = await downloadImage(front_matter.image, target_dir);
+	  front_matter.image = image_name;
 	}
 
 	if (!row_body) {
