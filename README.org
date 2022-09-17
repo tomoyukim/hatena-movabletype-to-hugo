@@ -4,9 +4,12 @@ A tool to convert a MovableType text exported from Hatena-blog to Hugo page bund
 ** Features
 - Remove Hatena-keyword links
 - Download images on Hatena Photo-life or Blogspot into Leaf Bundles
-- Convert blog card links to Shortcode; ~{{% card "url" %}}title{{% /card %}}~
 - Convert Amazon affiliate links to Shortcode; ~{{< amazon asin="asin">}}title{{< /amazon >}}~
 - Convert HTML tags to Markdown syntax as much as possible in order to reflect styles in the Hugo theme
+- Convert blog card links to Shortcode in case the open graph contents are available; ~{{% card url="url" img="src" title="title" %}}description{{% /card %}}~
+  - `--ogp` option is required. Otherwise, the blog cards are converted to the general links (`[]()`).
+  - You must run a [[./get_oqp][local server]] to get OGP contents.
+  - Just convert them to the general links when the open graph contents are no longer available.
 
 ** Usage
 This tool depends on [[https://github.com/google/zx][zx]]. Install ~zx~ before running this script.
@@ -19,4 +22,12 @@ Clone the repository and run.
   git clone git@github.com:tomoyukim/hatena-movabletype-to-hugo
   cd hatena-movabletype-to-hugo
   ./hmt2hugo.mjs ./path-to-exported-file
+#+end_src
+
+*** server to get OGP
+In order to use `--ogp` option, you must run the local server. The server code is almost copied from [[https://nyakapoko.github.io/post/13_hugo_blogcard/][Hugoでレスポンシブなブログカードを作成する]]. Thank you for `nyakapokos`!
+#+begin_src sh
+  cd get_ogp
+  npm i
+  node server.js
 #+end_src

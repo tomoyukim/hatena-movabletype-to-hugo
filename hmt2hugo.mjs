@@ -1,5 +1,27 @@
 #!/usr/bin/env zx
 
+// https://www.delftstack.com/howto/javascript/htmlencode-javascript/
+const htmlEncode = (string) => {
+  return string.replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;')
+    .replace(/"/g, '&#34;');
+    //.replace(/\//, '&#x2F;');
+}
+
+const getOGP = async (content_url) => {
+  const url = `http://localhost:6060/getogp?url=${content_url}`;
+  let obj = null;
+  try {
+    const res = await fetch(url);
+    obj = res.json();
+  } catch(error) {
+    console.error(chalk.red(error));
+  }
+  return obj;
+};
+
 const downloadImage = async (image_url, download_dir) => {
   const filename = image_url.substring(image_url.lastIndexOf('/') + 1);
   try {
@@ -30,16 +52,14 @@ const resolveHTMLEscapeSequence = (text) => {
   const amp = /&amp;/g;
 
   // replace escape sequence
-  let body = text.replaceAll(gt, '>');
-  body = body.replaceAll(lt, '<');
-  body = body.replaceAll(quot, '\'');
-  body = body.replaceAll(doublequot, '"');
-  body = body.replaceAll(amp, '&');
-
-  return body;
+  return text.replaceAll(gt, '>')
+    .replaceAll(lt, '<')
+    .replaceAll(quot, '\'')
+    .replaceAll(doublequot, '"')
+    .replaceAll(amp, '&');
 };
 
-const simplifyHTMLBody = (body_src) => {
+const simplifyHTMLBody = (body_src, useOGP) => {
   const keyword = /<a class="keyword"[^>]*>([^<]+)<\/a>/g;
   const amazon_link = /<div class="hatena-asin-detail">.*<p class="hatena-asin-detail-title"><a href=".+\/ASIN\/(.+)\/.+\/">([^<>]+)<\/a><\/p>.+<div class="hatena-asin-detail-foot"><\/div><\/div>/g;
   const photo_link = /<span itemscope itemtype="http:\/\/schema\.org\/Photograph"><img src="(.+\.[a-z]*)"[^>]*><\/span>/g;
@@ -63,6 +83,7 @@ const simplifyHTMLBody = (body_src) => {
 
 
   const image_urls = [];
+  const cards = [];
 
   // remove hatena keyword
   let body = body_src.replaceAll(keyword, (_, word) => {
@@ -91,13 +112,41 @@ ${title}
 
   // replace card link with custom shortcode
   body = body.replaceAll(card_link, (_, title, url) => {
-    return `{{% card "${url}" %}}${title}{{% /card %}}`;
+    if (useOGP) {
+      // note: (new Date()).getTime() can generate the same IDs since the process is really fast.
+      const id = 'id' + Math.random().toString(16).slice(2);
+      cards.push({
+	id,
+	url,
+	title
+      });
+      return `:::${id}:::`;
+    }
+    return `[${title}](${url})`;
   });
   body = body.replaceAll(card_link2, (_, url, title) => {
-    return `{{% card "${decodeURIComponent(url)}" %}}${title}{{% /card %}}`;
+    if (useOGP) {
+      const id = 'id' + Math.random().toString(16).slice(2);
+      cards.push({
+	id,
+	url: decodeURIComponent(url),
+	title
+      });
+      return `:::${id}:::`;
+    }
+    return `[${title}](${url})`;
   });
   body = body.replaceAll(card_link3, (_, url, title) => {
-    return `{{% card "${url}" %}}${title}{{% /card %}}`;
+    if (useOGP) {
+      const id = 'id' + Math.random().toString(16).slice(2);
+      cards.push({
+	id,
+	url,
+	title
+      });
+      return `:::${id}:::`;
+    }
+    return `[${title}](${url})`;
   });
   // replace image link with figure shortcode
   body = body.replaceAll(image_link, (_, href, src, alt) => {
@@ -143,7 +192,8 @@ ${title}
 
   return {
     body,
-    image_urls
+    image_urls,
+    cards
   };
 };
 
@@ -216,6 +266,7 @@ if (argv['_'].length === 1) {
   fs.readFile(argv['_'][0], "utf-8", async (err, data) => {
     if (err) throw err;
 
+    const useOGP = argv.ogp;
     const articles = data.split('--------');
     for (const article of articles) {
       const [row_meta, row_body] = article.split('-----');
@@ -238,22 +289,37 @@ if (argv['_'].length === 1) {
 	const body = row_body.substring(row_body.indexOf('BODY:')+5).trim(); // remove BODY:
 
 	const preprocessed = replaceHost(body, );
-	const content = simplifyHTMLBody(preprocessed);
+	const content = simplifyHTMLBody(preprocessed, useOGP);
 	for (const image_url of content.image_urls) {
 	  await $`mkdir -p ${target_dir}/image`;
 	  await downloadImage(image_url, `${target_dir}/image`);
 	}
 
+	if (useOGP && content.cards.length > 0) {
+	  for (const cardObj of content.cards) {
+	    const re = new RegExp(`:::${cardObj.id}:::`, 'g');
+	    const ogp = await getOGP(cardObj.url);
+	    if (ogp.exists) {
+	      content.body =
+		content.body.replaceAll(re, () => {
+		  return `{{% card url="${ogp.url}" img="${ogp.image}" title="${htmlEncode(ogp.title)}"%}}${ogp.description}{{% /card %}}`;
+		});
+	    } else {
+	      content.body = content.body.replaceAll(re, `[${cardObj.title}](${cardObj.url})`);
+	    }
+	  }
+	}
+
 	const post = `${JSON.stringify(front_matter)}
 ${content.body}`;
 
-	fs.writeFile(`${target_dir}/index.md`, post, (err, date) => {
+	fs.writeFile(`${target_dir}/index.md`, post, (err, _) => {
 	  if (err) throw err;
 	});
       }
     }
   });
 
+} else {
+  console.log('Usage: hmt2hugo [-o OUTPUT_DIR] [-f ORIGINAL_BASE_URL] [-t NEW_BASE_URL] [--ogp] HATENA_EXPORT_FILE');
 }
-
-console.log('Usage: hmt2hugo [-o OUTPUT_DIR] [-f ORIGINAL_BASE_URL] [-t NEW_BASE_URL] HATENA_EXPORT_FILE')
