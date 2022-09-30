@@ -79,6 +79,7 @@ const simplifyHTMLBody = (body_src, useOGP) => {
   const pre = /<\/pre>|<pre class="code" data-unlink>/g;
   const span = /<\/?span[ \w+="]*>/g;
   const ul = /<\/?ul>/g;
+  const ol = /<\/?ol>/g;
   const li = /<li>(.+)<\/li>/g;
 
 
@@ -170,6 +171,7 @@ ${title}
 
   // replace list
   body = body.replaceAll(ul, ''); // remove <ul></ul>
+  body = body.replaceAll(ol, ''); // remove <ol></ol>
   body = body.replaceAll(li, (_, item) => {
     return `* ${item}`;
   });
